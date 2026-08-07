@@ -33,6 +33,7 @@ class ItemUpdate(BaseModel):
     category: str | None = Field(default=None, max_length=80)
     unit: str | None = Field(default=None, min_length=1, max_length=30)
     frozen_at: str | None = None
+    barcode: str | None = Field(default=None, max_length=100)
 
 def headers(auth: str | None):
     if not URL or not KEY:
@@ -100,6 +101,32 @@ async def update_item(item_id: int, payload: ItemUpdate, authorization: str | No
 @app.delete("/api/items/{item_id}", status_code=204)
 async def delete_item(item_id: int, authorization: str | None = Header(None)):
     await db("DELETE", "items", authorization, params={"id":f"eq.{item_id}"})
+
+@app.get("/api/products/{barcode}")
+async def product_by_barcode(barcode: str, authorization: str | None = Header(None)):
+    headers(authorization)
+    code = "".join(character for character in barcode if character.isdigit())
+    if not code:
+        raise HTTPException(422, "Der Barcode enthält keine Ziffern.")
+    async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+        response = await client.get(
+            f"https://world.openfoodfacts.org/api/v3/product/{code}",
+            params={"fields": "product_name_de,product_name,categories_tags"},
+            headers={"User-Agent": "GefriertruhenInventar/0.1 (https://gefriertruhen-inventar.onrender.com)"},
+        )
+    if response.status_code == 404:
+        return {"found": False, "barcode": code}
+    if response.status_code >= 400:
+        raise HTTPException(502, "Die Produktdatenbank ist momentan nicht erreichbar.")
+    product = response.json().get("product", {})
+    categories = product.get("categories_tags") or []
+    category = categories[0].split(":")[-1].replace("-", " ").title() if categories else None
+    return {
+        "found": bool(product),
+        "barcode": code,
+        "name": product.get("product_name_de") or product.get("product_name"),
+        "category": category,
+    }
 
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 @app.get("/", include_in_schema=False)

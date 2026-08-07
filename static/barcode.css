@@ -1,0 +1,4 @@
+.barcode-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: end; }
+.barcode-row label { margin: 0; }
+#reader { overflow: hidden; border-radius: 12px; margin-bottom: 12px; }
+@media (max-width: 560px) { .barcode-row { grid-template-columns: 1fr 1fr; } .barcode-row label { grid-column: 1 / -1; } }
