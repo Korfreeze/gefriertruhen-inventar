@@ -37,6 +37,7 @@ class ItemUpdate(BaseModel):
     best_before: str | None = None
     barcode: str | None = Field(default=None, max_length=100)
     image_url: str | None = Field(default=None, max_length=1000)
+    notes: str | None = Field(default=None, max_length=1000)
 
 class ShoppingCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
