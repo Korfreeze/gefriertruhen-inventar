@@ -31,6 +31,7 @@ async function lookupBarcode(code = $('barcode').value, quickAdd = false) {
     if (!product.found) return msg('Produkt nicht gefunden. Du kannst den Namen manuell eintragen.');
     if (product.name) $('name').value = product.name;
     if (product.category && !$('category').value) $('category').value = product.category;
+    if (product.image_url) currentImageUrl = product.image_url;
     show('notice', false);
   } catch (error) { msg(error.message); }
 }

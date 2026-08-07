@@ -24,6 +24,7 @@ class Item(BaseModel):
     frozen_at: str | None = None
     best_before: str | None = None
     barcode: str | None = None
+    image_url: str | None = None
     notes: str | None = None
 
 class ItemUpdate(BaseModel):
@@ -35,6 +36,7 @@ class ItemUpdate(BaseModel):
     frozen_at: str | None = None
     best_before: str | None = None
     barcode: str | None = Field(default=None, max_length=100)
+    image_url: str | None = Field(default=None, max_length=1000)
 
 class ShoppingCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
@@ -139,7 +141,7 @@ async def product_by_barcode(barcode: str, authorization: str | None = Header(No
     async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
         response = await client.get(
             f"https://world.openfoodfacts.org/api/v3/product/{code}",
-            params={"fields": "product_name_de,product_name,categories_tags"},
+            params={"fields": "product_name_de,product_name,categories_tags,image_front_small_url,image_front_url"},
             headers={"User-Agent": "GefriertruhenInventar/0.1 (https://gefriertruhen-inventar.onrender.com)"},
         )
     if response.status_code == 404:
@@ -154,6 +156,7 @@ async def product_by_barcode(barcode: str, authorization: str | None = Header(No
         "barcode": code,
         "name": product.get("product_name_de") or product.get("product_name"),
         "category": category,
+        "image_url": product.get("image_front_small_url") or product.get("image_front_url"),
     }
 
 @app.get("/api/shopping-list")
