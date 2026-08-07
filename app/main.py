@@ -35,6 +35,18 @@ class ItemUpdate(BaseModel):
     frozen_at: str | None = None
     barcode: str | None = Field(default=None, max_length=100)
 
+class ShoppingCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    quantity: float = Field(default=1, ge=0)
+    unit: str = Field(default="Stück", min_length=1, max_length=30)
+    source_item_id: int | None = None
+
+class ShoppingUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    quantity: float | None = Field(default=None, ge=0)
+    unit: str | None = Field(default=None, min_length=1, max_length=30)
+    checked: bool | None = None
+
 def headers(auth: str | None):
     if not URL or not KEY:
         raise HTTPException(503, "Bitte zuerst die .env-Datei einrichten.")
@@ -127,6 +139,25 @@ async def product_by_barcode(barcode: str, authorization: str | None = Header(No
         "name": product.get("product_name_de") or product.get("product_name"),
         "category": category,
     }
+
+@app.get("/api/shopping-list")
+async def get_shopping_list(authorization: str | None = Header(None)):
+    return await db("GET", "shopping_list", authorization, params={"select": "*", "order": "checked.asc,created_at.desc"})
+
+@app.post("/api/shopping-list", status_code=201)
+async def add_shopping_item(payload: ShoppingCreate, authorization: str | None = Header(None)):
+    return await db("POST", "shopping_list", authorization, body=payload.model_dump(exclude_none=True), prefer="return=representation")
+
+@app.patch("/api/shopping-list/{entry_id}")
+async def update_shopping_item(entry_id: int, payload: ShoppingUpdate, authorization: str | None = Header(None)):
+    changes = payload.model_dump(exclude_unset=True)
+    if not changes:
+        raise HTTPException(422, "Es wurde keine Änderung übergeben.")
+    return await db("PATCH", "shopping_list", authorization, params={"id": f"eq.{entry_id}"}, body=changes, prefer="return=representation")
+
+@app.delete("/api/shopping-list/{entry_id}", status_code=204)
+async def delete_shopping_item(entry_id: int, authorization: str | None = Header(None)):
+    await db("DELETE", "shopping_list", authorization, params={"id": f"eq.{entry_id}"})
 
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 @app.get("/", include_in_schema=False)
