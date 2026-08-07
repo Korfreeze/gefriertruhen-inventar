@@ -47,6 +47,10 @@ class ShoppingUpdate(BaseModel):
     unit: str | None = Field(default=None, min_length=1, max_length=30)
     checked: bool | None = None
 
+class LocationUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    sort_order: int | None = None
+
 def headers(auth: str | None):
     if not URL or not KEY:
         raise HTTPException(503, "Bitte zuerst die .env-Datei einrichten.")
@@ -94,6 +98,17 @@ async def add_location(payload: dict[str, Any], authorization: str | None = Head
     if not name or not freezer_id:
         raise HTTPException(422, "Name und Gefriertruhe werden benötigt.")
     return await db("POST", "locations", authorization, body={"name": name, "freezer_id": freezer_id}, prefer="return=representation")
+
+@app.patch("/api/locations/{location_id}")
+async def update_location(location_id: int, payload: LocationUpdate, authorization: str | None = Header(None)):
+    changes = payload.model_dump(exclude_unset=True)
+    if not changes:
+        raise HTTPException(422, "Es wurde keine Änderung übergeben.")
+    return await db("PATCH", "locations", authorization, params={"id": f"eq.{location_id}"}, body=changes, prefer="return=representation")
+
+@app.delete("/api/locations/{location_id}", status_code=204)
+async def delete_location(location_id: int, authorization: str | None = Header(None)):
+    await db("DELETE", "locations", authorization, params={"id": f"eq.{location_id}"})
 
 @app.get("/api/items")
 async def items(freezer_id: int = Query(...), authorization: str | None = Header(None)):
