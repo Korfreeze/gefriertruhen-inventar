@@ -33,6 +33,7 @@ class ItemUpdate(BaseModel):
     category: str | None = Field(default=None, max_length=80)
     unit: str | None = Field(default=None, min_length=1, max_length=30)
     frozen_at: str | None = None
+    best_before: str | None = None
     barcode: str | None = Field(default=None, max_length=100)
 
 class ShoppingCreate(BaseModel):
