@@ -12,6 +12,7 @@ async function loadShopping() {
 }
 
 function subscribeShopping() {
+  if (localMode) return;
   if (shoppingChannel) return;
   shoppingChannel = sb.channel('shopping-list-live')
     .on('postgres_changes', {event: '*', schema: 'public', table: 'shopping_list'}, loadShopping)

@@ -9,7 +9,7 @@ import os
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Query
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from reportlab.lib import colors
@@ -90,7 +90,7 @@ async def db(method: str, table: str, auth: str | None, *, params=None, body=Non
 @app.get("/api/config")
 def config():
     if not URL or not KEY: raise HTTPException(503, "Bitte zuerst die .env-Datei einrichten.")
-    return {"supabaseUrl": URL, "supabaseAnonKey": KEY}
+    return {"localMode": False, "supabaseUrl": URL, "supabaseAnonKey": KEY}
 
 @app.get("/api/health")
 def health(): return {"status": "ok", "supabase": "configured" if URL and KEY else "missing"}
@@ -131,6 +131,19 @@ async def delete_location(location_id: int, authorization: str | None = Header(N
 @app.get("/api/items")
 async def items(freezer_id: int = Query(...), authorization: str | None = Header(None)):
     return await db("GET", "items", authorization, params={"select":"*,locations(name)","freezer_id":f"eq.{freezer_id}","order":"name.asc"})
+
+@app.get("/api/export/backup.json")
+async def export_backup(authorization: str | None = Header(None)):
+    backup = {
+        "format": "gefriertruhen-inventar-backup-v1",
+        "created_at": datetime.now().astimezone().isoformat(),
+        "freezers": await db("GET", "freezers", authorization, params={"select": "*", "order": "id.asc"}),
+        "locations": await db("GET", "locations", authorization, params={"select": "*", "order": "id.asc"}),
+        "items": await db("GET", "items", authorization, params={"select": "*", "order": "id.asc"}),
+        "shopping_list": await db("GET", "shopping_list", authorization, params={"select": "*", "order": "id.asc"}),
+    }
+    filename = f"Gefriertruhen-Backup-{date.today().isoformat()}.json"
+    return JSONResponse(backup, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 def _display_date(value: str | None) -> str:
     if not value:

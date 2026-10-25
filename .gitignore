@@ -1,4 +1,8 @@
 .env
+.env.nas
+nas-data/
+backup.json
+migration/*.json
 .venv/
 __pycache__/
 .pytest_cache/
